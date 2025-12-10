@@ -312,13 +312,34 @@ class ModernTextEditor:
         # Configure root background
         self.root.configure(bg=self.bg_color)
         
-        # Menu Bar
-        menubar = tk.Menu(self.root, bg=self.menu_bg, fg=self.menu_fg, 
-                         activebackground="#094771", activeforeground="white")
-        self.root.config(menu=menubar)
-        
+        # Top bar frame for custom menu and hamburger
+        top_bar = tk.Frame(self.root, bg=self.bg_color, height=40)
+        top_bar.pack(side=tk.TOP, fill=tk.X)
+        top_bar.pack_propagate(False)  # Maintain fixed height
+
+        # Style for Menubuttons
+        menu_btn_style = {
+            "bg": self.bg_color,
+            "fg": self.menu_fg,
+            "activebackground": "#094771",
+            "activeforeground": "white",
+            "relief": tk.FLAT,
+            "font": ("Segoe UI", 10),
+            "padx": 10,
+            "pady": 5,
+            "cursor": "hand2"
+        }
+
+        # Header Title (optional, or just for spacing if needed, but let's stick to buttons)
+        # We can put the buttons in a frame on the left
+        menu_frame = tk.Frame(top_bar, bg=self.bg_color)
+        menu_frame.pack(side=tk.LEFT, padx=2)
+
         # File Menu
-        file_menu = tk.Menu(menubar, tearoff=0, bg=self.menu_bg, fg=self.menu_fg)
+        file_btn = tk.Menubutton(menu_frame, text="File", **menu_btn_style)
+        file_btn.pack(side=tk.LEFT)
+        
+        file_menu = tk.Menu(file_btn, tearoff=0, bg=self.menu_bg, fg=self.menu_fg)
         file_menu.add_command(label="New Tab", command=self.new_tab, accelerator="Ctrl+T")
         file_menu.add_command(label="New File", command=self.new_file, accelerator="Ctrl+N")
         file_menu.add_command(label="Open...", command=self.open_file, accelerator="Ctrl+O")
@@ -328,10 +349,14 @@ class ModernTextEditor:
         file_menu.add_command(label="Close Tab", command=self.close_tab, accelerator="Ctrl+W")
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.exit_editor, accelerator="Ctrl+Q")
-        menubar.add_cascade(label="File", menu=file_menu)
         
+        file_btn.config(menu=file_menu)
+
         # Edit Menu
-        edit_menu = tk.Menu(menubar, tearoff=0, bg=self.menu_bg, fg=self.menu_fg)
+        edit_btn = tk.Menubutton(menu_frame, text="Edit", **menu_btn_style)
+        edit_btn.pack(side=tk.LEFT)
+        
+        edit_menu = tk.Menu(edit_btn, tearoff=0, bg=self.menu_bg, fg=self.menu_fg)
         edit_menu.add_command(label="Undo", command=self.undo, accelerator="Ctrl+Z")
         edit_menu.add_command(label="Redo", command=self.redo, accelerator="Ctrl+Y")
         edit_menu.add_separator()
@@ -341,14 +366,61 @@ class ModernTextEditor:
         edit_menu.add_separator()
         edit_menu.add_command(label="Select All", command=self.select_all, accelerator="Ctrl+A")
         edit_menu.add_command(label="Find...", command=self.find_text, accelerator="Ctrl+F")
-        menubar.add_cascade(label="Edit", menu=edit_menu)
         
-        # View Menu
-        view_menu = tk.Menu(menubar, tearoff=0, bg=self.menu_bg, fg=self.menu_fg)
-        view_menu.add_command(label="Zoom In", command=self.zoom_in, accelerator="Ctrl++")
-        view_menu.add_command(label="Zoom Out", command=self.zoom_out, accelerator="Ctrl+-")
-        view_menu.add_command(label="Reset Zoom", command=self.reset_zoom, accelerator="Ctrl+0")
-        menubar.add_cascade(label="View", menu=view_menu)
+        edit_btn.config(menu=edit_menu)
+        
+        # Hamburger menu button in upper right corner of the SAME top_bar
+        hamburger_btn = tk.Button(
+            top_bar,
+            text="☰",
+            command=self.show_hamburger_menu,
+            bg=self.bg_color,
+            fg=self.menu_fg,
+            activebackground="#094771",
+            activeforeground="white",
+            relief=tk.FLAT,
+            font=("Segoe UI", 16),
+            padx=15,
+            pady=0,
+            cursor="hand2",
+            highlightthickness=0,
+            bd=0
+        )
+        hamburger_btn.pack(side=tk.RIGHT, padx=5)
+        self.hamburger_btn = hamburger_btn
+        
+        # Settings button - placed to the left of hamburger (packed after hamburger with side=RIGHT)
+        settings_btn = tk.Button(
+            top_bar,
+            text="⚙",
+            command=self.show_settings,
+            bg=self.bg_color,
+            fg=self.menu_fg,
+            activebackground="#094771",
+            activeforeground="white",
+            relief=tk.FLAT,
+            font=("Segoe UI", 16),
+            padx=15,
+            pady=0,
+            cursor="hand2",
+            highlightthickness=0,
+            bd=0
+        )
+        settings_btn.pack(side=tk.RIGHT)
+        
+        # Create tooltip label for "Main Menu" (hidden by default)
+        self.menu_tooltip = tk.Label(
+            top_bar,
+            text="Main Menu",
+            bg=self.menu_bg,
+            fg=self.menu_fg,
+            font=("Segoe UI", 10)
+        )
+        # Don't pack it yet - it will show on hover
+        
+        # Bind hover events to show/hide tooltip
+        hamburger_btn.bind('<Enter>', self.show_menu_tooltip)
+        hamburger_btn.bind('<Leave>', self.hide_menu_tooltip)
         
         # Main container frame
         main_frame = tk.Frame(self.root, bg=self.bg_color)
@@ -363,10 +435,11 @@ class ModernTextEditor:
         style.configure('TNotebook.Tab', 
                        background=self.menu_bg, 
                        foreground=self.menu_fg,
-                       padding=[10, 5],
+                       padding=[20, 10], # Increased padding for wider tabs
+                       font=("Segoe UI", 10), # Increased font size
                        borderwidth=0)
         style.map('TNotebook.Tab',
-                 background=[('selected', self.bg_color)],
+                 background=[('selected', self.menu_bg)],
                  foreground=[('selected', 'white')])
         
         self.notebook = ttk.Notebook(main_frame, style='TNotebook')
@@ -452,21 +525,7 @@ class ModernTextEditor:
         )
         self.status_bar.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
-        # Settings button
-        settings_btn = tk.Button(
-            status_frame,
-            text="⚙",
-            command=self.show_settings,
-            bg=self.menu_bg,
-            fg=self.menu_fg,
-            activebackground="#094771",
-            activeforeground="white",
-            relief=tk.FLAT,
-            font=("Segoe UI", 12),
-            padx=10,
-            cursor="hand2"
-        )
-        settings_btn.pack(side=tk.RIGHT)
+
         
         # Create first tab after all UI is ready
         self.new_tab()
@@ -814,6 +873,34 @@ class ModernTextEditor:
         tab = self.get_active_tab()
         if tab:
             tab.toggle_line_numbers()
+    
+    def show_menu_tooltip(self, event=None):
+        """Show the Main Menu tooltip on hover"""
+        self.menu_tooltip.pack(side=tk.RIGHT, padx=(0, 5))
+    
+    def hide_menu_tooltip(self, event=None):
+        """Hide the Main Menu tooltip when not hovering"""
+        self.menu_tooltip.pack_forget()
+    
+    def show_hamburger_menu(self):
+        """Display the hamburger menu with View options"""
+        # Create popup menu
+        hamburger_menu = tk.Menu(self.root, tearoff=0, bg=self.menu_bg, fg=self.menu_fg)
+        
+        # Add View menu items
+        hamburger_menu.add_command(label="Zoom In", command=self.zoom_in, accelerator="Ctrl++")
+        hamburger_menu.add_command(label="Zoom Out", command=self.zoom_out, accelerator="Ctrl+-")
+        hamburger_menu.add_command(label="Reset Zoom", command=self.reset_zoom, accelerator="Ctrl+0")
+        
+        # Get button position to display menu below it
+        x = self.hamburger_btn.winfo_rootx()
+        y = self.hamburger_btn.winfo_rooty() + self.hamburger_btn.winfo_height()
+        
+        # Display the menu using tk_popup (handles auto-close properly)
+        try:
+            hamburger_menu.tk_popup(x, y)
+        finally:
+            hamburger_menu.grab_release()
     
     def show_settings(self):
         """Display the settings dialog"""
